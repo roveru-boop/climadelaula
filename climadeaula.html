@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mapa de Convivencia del Aula - ITO 2025</title>
+  <!-- Librería para capturar pantalla -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      margin: 0;
+      padding: 15px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .title {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+    .mode-indicator {
+      text-align: center;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      background: linear-gradient(45deg, #FFE4B5, #F0E68C);
+      border: 3px solid #DAA520;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    button {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      margin: 5px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      font-size: 14px;
+      font-weight: bold;
+      min-width: 120px;
+    }
+    button:hover, button:active {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    button.active {
+      background: linear-gradient(45deg, #2196F3, #1976D2);
+      transform: scale(1.05);
+    }
+    button.danger { background: linear-gradient(45deg, #f44336, #d32f2f); }
+    button.warning { background: linear-gradient(45deg, #ff9800, #f57c00); }
+    button.none { background: linear-gradient(45deg, #999, #666); }
+
+    .main-area {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    @media (min-width: 900px) {
+      .main-area {
+        flex-direction: row;
+      }
+    }
+
+    .classroom {
+      position: relative;
+      width: 100%;
+      height: 500px;
+      max-width: 950px;
+      border: 4px solid #333;
+      background: #fff8e1;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 0 auto;
+      padding: 10px;
+      box-sizing: border-box;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    @media (max-width: 600px) {
+      .classroom {
+        height: 400px;
+      }
+    }
+
+    .board {
+      position: absolute;
+      top: 0px;
+      left: 300px;
+      width: 200px;
+      height: 25px;
+      background: #555;
+      color: white;
+      text-align: center;
+      line-height: 25px;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+    .door {
+      position: absolute;
+      top: 50px;
+      right: 5px;
+      width: 25px;
+      height: 100px;
+      background: #8B4513;
+      border-radius: 5px;
+    }
+    .window {
+      position: absolute;
+      right: 5px;
+      width: 25px;
+      height: 50px;
+      background: lightblue;
+      border-radius: 8px;
+      border: 2px solid #4682B4;
+    }
+
+    .desk {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: rgba(169, 169, 169, 0.7);
+      border: 2px solid #999;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .student {
+      position: absolute;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 3px solid white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      transition: all 0.3s;
+      user-select: none;
+      z-index: 100;
+    }
+    .student:hover, .student:active {
+      transform: scale(1.1);
+    }
+    .student.selected {
+      border: 3px solid #FFD700 !important;
+      transform: scale(1.2);
+      box-shadow: 0 0 15px #FFD700;
+    }
+    .student.dragging {
+      transform: scale(1.3);
+      z-index: 1000;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    }
+    .student.collaborative { background: linear-gradient(45deg, #4CAF50, #66BB6A); }
+    .student.conflict { background: linear-gradient(45deg, #f44336, #ff5722); }
+    .student.communication { background: linear-gradient(45deg, #2196F3, #42A5F5); }
+    .student.neutral { background: linear-gradient(45deg, #FFD700, #FFB347); }
+
+    .connection {
+      position: absolute;
+      height: 3px;
+      border-radius: 2px;
+      z-index: 50;
+      opacity: 0.8;
+      transition: all 0.3s;
+    }
+    .connection.collaboration { background: #4CAF50; height: 4px; }
+    .connection.conflict { background: #f44336; height: 4px; }
+    .connection.communication { background: #2196F3; height: 3px; }
+
+    .sidebar {
+      width: 100%;
+      max-width: 350px;
+      background: rgba(255,255,255,0.95);
+      padding: 15px;
+      border-radius: 10px;
+      border: 2px solid #ddd;
+      margin: 0 auto;
+    }
+    @media (min-width: 900px) {
+      .sidebar {
+        margin: 0;
+      }
+    }
+
+    .info-panel {
+      background: #fff8e1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #F0E68C;
+      font-size: 14px;
+    }
+    .metrics {
+      background: #e1f5fe;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #81d4fa;
+      margin: 10px 0;
+    }
+    .metric {
+      margin: 6px 0;
+      font-weight: bold;
+      color: #333;
+      font-size: 15px;
+    }
+    .legend {
+      background: #f1f8e9;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #c5e1a5;
+      margin: 10px 0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 13px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 18px;
+      margin-right: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .rule-of-three {
+      background: #fff3e0;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #ffb74d;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    /* Colores para ICG */
+    .icg-excelente {
+      color: #2E7D32;
+      font-weight: bold;
+      background: #C8E6C9;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .icg-bueno {
+      color: #F57F17;
+      font-weight: bold;
+      background: #FFF9C4;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .icg-necesita-ayuda {
+      color: #C62828;
+      font-weight: bold;
+      background: #FFCDD2;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Modal para vista previa */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 80%;
+      max-height: 80vh;
+      overflow: auto;
+      text-align: center;
+    }
+    .modal img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+    .modal-buttons {
+      margin-top: 15px;
+    }
+    .modal-buttons button {
+      margin: 0 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">🎯 Mapa de Convivencia del Aula - ITO 2025</h1>
+    <div class="mode-indicator" id="modeIndicator">👆 Selecciona una herramienta</div>
+
+    <div class="controls">
+      <button onclick="setMode('none')" id="noneBtn" class="none">⬜ NINGUNO</button>
+      <button onclick="setMode('move')" id="moveBtn">🔄 MOVER</button>
+      <button onclick="setMode('collaboration')" id="collabBtn" style="background: linear-gradient(45deg, #4CAF50, #66BB6A);">🤝 Colaboración</button>
+      <button onclick="setMode('conflict')" id="conflictBtn" style="background: linear-gradient(45deg, #f44336, #ff5722);">⚠️ Conflicto</button>
+      <button onclick="setMode('communication')" id="commBtn" style="background: linear-gradient(45deg, #2196F3, #42A5F5);">💬 Comunicación</button>
+      <button onclick="clearConnections()" class="warning">🗑️ LIMPIAR</button>
+      <button onclick="resetPositions()" class="warning">↩️ RESET</button>
+      <button onclick="previewMap()" class="active">🖼️ DESCARGAR</button>
+    </div>
+
+    <div class="main-area">
+      <div class="classroom" id="classroom">
+        <div class="board">PIZARRA</div>
+        <div class="door"></div>
+        <div style="position: absolute; top: 60px; right: 35px; color: #8B4513; font-weight: bold; transform: rotate(90deg); font-size: 10px;">PUERTA</div>
+        <div class="window" style="top: 100px;"></div>
+        <div class="window" style="top: 180px;"></div>
+        <div class="window" style="top: 260px;"></div>
+        <div class="window" style="top: 340px;"></div>
+        <div class="window" style="top: 420px;"></div>
+      </div>
+
+      <div class="sidebar">
+        <div class="info-panel" id="studentInfo">
+          <h3>👤 Estudiante</h3>
+          <p>Haz clic en un estudiante</p>
+        </div>
+
+        <div class="metrics">
+          <h3>📊 Métricas del Aula</h3>
+          <div class="metric">Colaboraciones: <span id="collabConnections">0</span></div>
+          <div class="metric">Conflictos: <span id="conflictConnections">0</span></div>
+          <div class="metric">Comunicaciones: <span id="commConnections">0</span></div>
+          <div class="metric">Total de relaciones: <span id="totalConnections">0</span></div>
+          <div class="metric">ICG: <span id="icgAverage">0.00</span></div>
+        </div>
+
+        <div class="rule-of-three">
+          <h4>📌 ¿Qué significa ICG?</h4>
+          <p><strong>ICG = Índice de Convivencia Grupal</strong></p>
+          <p>Es una forma de medir cómo se llevan <strong>todos los estudiantes del aula</strong>:</p>
+          <p>✅ Cuenta las <strong>buenas relaciones</strong>: colaboración y comunicación</p>
+          <p>❌ Contra las <strong>malas relaciones</strong>: conflictos</p>
+          <p><strong>Fórmula:</strong><br>
+             ICG = (Colaboraciones + Comunicaciones) / Total de relaciones</p>
+          <p><strong>Ejemplo:</strong> Si hay 3 buenas y 2 malas → ICG = 3 / 5 = 0.6</p>
+          <p>• 0.81–1.0: Excelente 🌟</p>
+          <p>• 0.51–0.80: Bueno 😊</p>
+          <p>• 0.00–0.50: Necesita ayuda 🤕</p>
+        </div>
+
+        <div class="legend">
+          <h3>🎨 Leyenda</h3>
+          <div class="legend-item"><div class="legend-color" style="background: #4CAF50; border-radius: 50%;"></div><span>Colaborativo</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #f44336; border-radius: 50%;"></div><span>Conflictivo</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #2196F3; border-radius: 50%;"></div><span>Comunicación</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #FFD700; border-radius: 50%;"></div><span>Neutral</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #4CAF50; height: 5px;"></div><span>Colaboración</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #f44336; height: 5px;"></div><span>Conflicto</span></div>
+          <div class="legend-item"><div class="legend-color" style="background: #2196F3; height: 4px;"></div><span>Comunicación</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para vista previa -->
+  <div class="modal" id="previewModal">
+    <div class="modal-content">
+      <h3>Vista previa del mapa</h3>
+      <img id="previewImage" alt="Vista previa del aula" />
+      <div class="modal-buttons">
+        <button onclick="downloadImage()" class="active">✅ Descargar PNG</button>
+        <button onclick="closePreview()" class="warning">❌ Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Nombres de estudiantes (iniciales de prueba)
+    const studentNames = {
+      1: 'Ana Sofía Pérez',
+      2: 'Luis Carlos Mendoza',
+      3: 'María José López',
+      4: 'Pedro Andrés Gómez',
+      5: 'Sofía Valentina Ruiz',
+      6: 'Carlos Eduardo Torres',
+      7: 'Laura Isabela Díaz',
+      8: 'Diego Fernando Sánchez',
+      9: 'Emma Carolina Ramírez',
+      10: 'Mateo Javier Castro',
+      11: 'Valentina Sofia Castillo',
+      12: 'Sebastián Daniel Muñoz',
+      13: 'Isabella Camila Ochoa',
+      14: 'Alejandro Mateo Arango',
+      15: 'Camila Andrea Vargas',
+      16: 'Santiago Felipe González',
+      17: 'Natalia Elena Rincón',
+      18: 'Andrés David Suárez',
+      19: 'Gabriela Lucía Molina',
+      20: 'David Nicolás Cárdenas',
+      21: 'Lucía Valeria Mejía',
+      22: 'Felipe Santiago Herrera',
+      23: 'Martina Sofía Pineda',
+      24: 'Nicolás Juan Acosta',
+      25: 'Valeria Alejandra Rojas'
+    };
+
+    // Variables
+    let currentMode = 'none';
+    let selectedStudent = null;
+    let students = [];
+    let connections = [];
+
+    // Inicializar
+    function initializeStudents() {
+      const classroom = document.getElementById('classroom');
+      if (!classroom) return;
+
+      classroom.querySelectorAll('.student, .desk').forEach(el => el.remove());
+
+      const cols = 5;
+      const rows = 5;
+
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const id = i * 5 + j + 1;
+          if (id > 25) break;
+
+          const x = 100 + j * 150;
+          const y = 60 + i * 90;
+
+          const desk = document.createElement('div');
+          desk.className = 'desk';
+          desk.style.left = (x - 5) + 'px';
+          desk.style.top = (y + 15) + 'px';
+          classroom.appendChild(desk);
+
+          const student = document.createElement('div');
+          student.className = 'student';
+          student.style.left = x + 'px';
+          student.style.top = y + 'px';
+          student.textContent = id;
+          student.classList.add('neutral');
+
+          student.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleStudentClick(id);
+          });
+          student.addEventListener('mousedown', startDrag);
+          student.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrag(e);
+          }, { passive: false });
+
+          students.push({ 
+            element: student, 
+            id, 
+            x, 
+            y, 
+            originalX: x, 
+            originalY: y, 
+            state: 'neutral', 
+            history: [] 
+          });
+          classroom.appendChild(student);
+        }
+      }
+
+      classroom.addEventListener('click', (e) => {
+        if (e.target.id === 'classroom') {
+          clearSelection();
+          setMode('none');
+        }
+      });
+
+      updateMetrics();
+    }
+
+    // Modo
+    function setMode(mode) {
+      currentMode = mode;
+      selectedStudent = null;
+      document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(mode + 'Btn')?.classList.add('active');
+
+      const msg = {
+        none: '⬜ Ninguna herramienta activa',
+        move: '🔄 Mover estudiantes',
+        collaboration: '🤝 Colaboración',
+        conflict: '⚠️ Conflicto',
+        communication: '💬 Comunicación'
+      };
+      document.getElementById('modeIndicator').textContent = msg[mode];
+    }
+
+    // Click en estudiante
+    function handleStudentClick(id) {
+      const name = studentNames[id];
+      const info = document.getElementById('studentInfo');
+      const student = students.find(s => s.id === id);
+
+      let historyHtml = '<p><strong>Historial:</strong></p>';
+      if (student.history.length === 0) {
+        historyHtml += '<p>Sin interacciones</p>';
+      } else {
+        student.history.forEach(event => {
+          const otherName = studentNames[event.with];
+          const timeAgo = new Date(event.time).toLocaleTimeString();
+          const emoji = event.type === 'collaboration' ? '🤝' : 
+                        event.type === 'conflict' ? '⚠️' : '💬';
+          historyHtml += `<p>${emoji} ${event.type} con ${otherName} (${timeAgo})</p>`;
+        });
+      }
+
+      info.innerHTML = `
+        <h3>👤 ${name}</h3>
+        <p>Estado: ${student.state}</p>
+        ${historyHtml}
+      `;
+
+      if (currentMode === 'none' || currentMode === 'move') return;
+
+      if (!selectedStudent) {
+        selectedStudent = id;
+        student.element.classList.add('selected');
+        document.getElementById('modeIndicator').textContent = `✅ ${name} seleccionado`;
+      } else if (selectedStudent === id) {
+        student.element.classList.remove('selected');
+        selectedStudent = null;
+      } else {
+        createConnection(selectedStudent, id, currentMode);
+        student.element.classList.add('selected');
+      }
+    }
+
+    // Arrastrar
+    function startDrag(e) {
+      if (currentMode !== 'move') return;
+      e.preventDefault();
+
+      const el = e.target;
+      const student = students.find(s => s.element === el);
+      if (!student) return;
+
+      el.classList.add('dragging');
+      const rect = classroom.getBoundingClientRect();
+      const startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+      const startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+      const dragStartX = startX - rect.left - student.x;
+      const dragStartY = startY - rect.top - student.y;
+
+      function move(ev) {
+        ev.preventDefault();
+        const clientX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
+        const clientY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
+        let x = clientX - rect.left - dragStartX;
+        let y = clientY - rect.top - dragStartY;
+        x = Math.max(20, Math.min(730, x));
+        y = Math.max(20, Math.min(430, y));
+        student.x = x;
+        student.y = y;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+      }
+
+      function up() {
+        el.classList.remove('dragging');
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.removeEventListener('touchmove', move);
+        document.removeEventListener('touchend', up);
+      }
+
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+      document.addEventListener('touchmove', move, { passive: false });
+      document.addEventListener('touchend', up);
+    }
+
+    // Crear conexión
+    function createConnection(id1, id2, type) {
+      const s1 = students.find(s => s.id === id1);
+      const s2 = students.find(s => s.id === id2);
+      if (!s1 || !s2) return;
+
+      const connId = [id1, id2].sort().join('-');
+      if (connections.some(c => c.id === connId)) return;
+
+      const connection = document.createElement('div');
+      connection.className = `connection ${type}`;
+      const dx = s2.x - s1.x;
+      const dy = s2.y - s1.y;
+      const length = Math.sqrt(dx*dx + dy*dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      Object.assign(connection.style, {
+        left: (s1.x + 22) + 'px',
+        top: (s1.y + 22) + 'px',
+        width: length + 'px',
+        transform: `rotate(${angle}deg)`,
+        transformOrigin: '0 50%'
+      });
+
+      classroom.appendChild(connection);
+      connections.push({ id: connId, id1, id2, type, element: connection });
+
+      s1.history.push({ type, with: id2, time: Date.now() });
+      s2.history.push({ type, with: id1, time: Date.now() });
+
+      updateStudentState(s1);
+      updateStudentState(s2);
+
+      updateMetrics();
+    }
+
+    // Actualizar estado
+    function updateStudentState(student) {
+      const lastEvent = student.history.length > 0 ? student.history[student.history.length - 1] : null;
+      let newState = 'neutral';
+      if (lastEvent && lastEvent.type === 'conflict') newState = 'conflict';
+      else if (lastEvent && lastEvent.type === 'communication') newState = 'communication';
+      else if (lastEvent && lastEvent.type === 'collaboration') newState = 'collaborative';
+
+      student.element.classList.remove('collaborative', 'conflict', 'communication', 'neutral');
+      student.element.classList.add(newState);
+      student.state = newState;
+    }
+
+    // Actualizar métricas (ICG grupal)
+    function updateMetrics() {
+      const collab = connections.filter(c => c.type === 'collaboration').length;
+      const conflict = connections.filter(c => c.type === 'conflict').length;
+      const comm = connections.filter(c => c.type === 'communication').length;
+      const total = collab + comm + conflict;
+
+      const buenas = collab + comm;
+      const icgGlobal = total === 0 ? 0 : buenas / total;
+
+      document.getElementById('collabConnections').textContent = collab;
+      document.getElementById('conflictConnections').textContent = conflict;
+      document.getElementById('commConnections').textContent = comm;
+      document.getElementById('totalConnections').textContent = total;
+
+      const icgAvgElement = document.getElementById('icgAverage');
+      icgAvgElement.textContent = icgGlobal.toFixed(2);
+      icgAvgElement.className = '';
+      if (icgGlobal >= 0.81) {
+        icgAvgElement.classList.add('icg-excelente');
+      } else if (icgGlobal >= 0.51) {
+        icgAvgElement.classList.add('icg-bueno');
+      } else {
+        icgAvgElement.classList.add('icg-necesita-ayuda');
+      }
+    }
+
+    // Limpiar
+    function clearConnections() {
+      connections.forEach(c => c.element.remove());
+      connections = [];
+      students.forEach(s => {
+        s.history = [];
+        s.state = 'neutral';
+        s.element.classList.remove('collaborative', 'conflict', 'communication', 'selected');
+        s.element.classList.add('neutral');
+      });
+      updateMetrics();
+      document.getElementById('modeIndicator').textContent = '🗑️ Todo limpio. Listo para empezar.';
+    }
+
+    function resetPositions() {
+      clearConnections();
+      students.forEach(s => {
+        s.x = s.originalX;
+        s.y = s.originalY;
+        s.element.style.left = s.x + 'px';
+        s.element.style.top = s.y + 'px';
+      });
+      document.getElementById('modeIndicator').textContent = '↩️ Aula restablecida.';
+    }
+
+    // Vista previa del mapa
+    function previewMap() {
+      const modal = document.getElementById('previewModal');
+      const img = document.getElementById('previewImage');
+      
+      html2canvas(document.querySelector(".main-area")).then(canvas => {
+        img.src = canvas.toDataURL('image/png');
+        modal.style.display = 'flex';
+      });
+    }
+
+    // Descargar imagen
+    function downloadImage() {
+      const link = document.createElement('a');
+      link.download = 'mapa-convivencia-aula.png';
+      link.href = document.getElementById('previewImage').src;
+      link.click();
+    }
+
+    // Cerrar vista previa
+    function closePreview() {
+      document.getElementById('previewModal').style.display = 'none';
+    }
+
+    // Iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeStudents();
+      setMode('none');
+    });
+  </script>
+</body>
+</html>
